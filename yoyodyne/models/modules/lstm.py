@@ -58,7 +58,11 @@ class LSTMModule(base.BaseModule):
 
 class LSTMEncoder(LSTMModule):
     def forward(
-        self, source: data.PaddedTensor
+        self, 
+        batch: data.PaddedBatch,
+        projected_translation_h: torch.Tensor,
+        projected_translation_c: torch.Tensor,
+        tama_use_translation: bool,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Encodes the input.
 
@@ -70,13 +74,17 @@ class LSTMEncoder(LSTMModule):
             Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
                 encoded timesteps, and the LSTM h0 and c0 cells.
         """
+        source = batch.source
         embedded = self.embed(source.padded)
         # Packs embedded source symbols into a PackedSequence.
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, source.lengths(), batch_first=True, enforce_sorted=False
         )
         # -> B x seq_len x encoder_dim, (h0, c0).
-        packed_outs, (H, C) = self.module(packed)
+        if tama_use_translation:
+            packed_outs, (H, C) = self.module(packed, (projected_translation_h, projected_translation_c))
+        else:
+            packed_outs, (H, C) = self.module(packed)
         encoded, _ = nn.utils.rnn.pad_packed_sequence(
             packed_outs,
             batch_first=True,

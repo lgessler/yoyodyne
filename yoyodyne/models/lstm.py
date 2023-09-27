@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple, Union
 
 import torch
 from torch import nn
+import torch.nn.functional as F
 
 from .. import data, defaults
 from . import base, modules
@@ -38,6 +39,10 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self.h0 = nn.Parameter(torch.rand(self.hidden_size))
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
+        if self.tama_use_translation:
+            self.tama_projection_h = nn.Linear(768, self.embedding_size, bias=False)
+            self.tama_projection_c = nn.Linear(768, self.embedding_size, bias=False)
+
 
     def get_decoder(self) -> modules.lstm.LSTMDecoder:
         return modules.lstm.LSTMDecoder(
@@ -287,7 +292,21 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions (torch.Tensor): tensor of predictions of shape
                 (seq_len, batch_size, target_vocab_size).
         """
-        encoder_out = self.source_encoder(batch.source).output
+        if self.tama_use_translation:
+            trans = batch.translation_tensors.padded
+            trans_mask = ~trans.sum(-1).eq(0)
+            avg_pooled = trans.sum(-2) / trans_mask.sum(-1).unsqueeze(-1)
+            projected_translation_h = F.dropout(self.tama_projection_h(avg_pooled), 0.1)
+            projected_translation_c = F.dropout(self.tama_projection_c(avg_pooled), 0.1)
+        else:
+            projected_translation_h = None
+            projected_translation_c = None
+        encoder_out = self.source_encoder(
+            batch, 
+            projected_translation_h, 
+            projected_translation_c, 
+            self.tama_use_translation
+        ).output
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(
                 encoder_out,

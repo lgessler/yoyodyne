@@ -48,3 +48,6 @@ REDUCEONPLATEAU_PATIENCE = 10
 
 # Decoding arguments.
 BEAM_WIDTH = 1
+
+# TAMA arguments
+TAMA_USE_TRANSLATION = False

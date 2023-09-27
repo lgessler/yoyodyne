@@ -12,6 +12,7 @@ from torch import nn, optim
 
 from .. import data, defaults, evaluators, schedulers, util
 from . import modules
+from yoyodyne.util import pickle_dump, pickle_load
 
 
 class Error(Exception):
@@ -49,6 +50,8 @@ class BaseEncoderDecoder(pl.LightningModule):
     features_encoder_cls: Optional[modules.base.BaseModule]
     hidden_size: int
     source_encoder_cls: modules.base.BaseModule
+    # Custom for TAMA
+    tama_use_translation: bool
     # Constructed inside __init__.
     dropout_layer: nn.Dropout
     evaluator: evaluators.Evaluator
@@ -81,6 +84,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         decoder_layers=defaults.DECODER_LAYERS,
         embedding_size=defaults.EMBEDDING_SIZE,
         hidden_size=defaults.HIDDEN_SIZE,
+        tama_use_translation=defaults.TAMA_USE_TRANSLATION,
         **kwargs,  # Ignored.
     ):
         super().__init__()
@@ -109,6 +113,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         self.embedding_size = embedding_size
         self.encoder_layers = encoder_layers
         self.hidden_size = hidden_size
+        self.tama_use_translation = tama_use_translation
         self.dropout_layer = nn.Dropout(p=self.dropout, inplace=False)
         self.evaluator = evaluators.Evaluator()
         # Checks compatibility with feature encoder and dataloader.
@@ -250,6 +255,18 @@ class BaseEncoderDecoder(pl.LightningModule):
             torch.Tensor: loss.
         """
         # -> B x seq_len x target_vocab_size.
+        #print(batch)
+        #print(batch.source.padded[1])
+        #print(batch.target.padded[1])
+        #print(batch.translation_tensors.padded[1])
+        #pickle_dump("/tmp/batch", batch)
+        #assert False
+        #batch = pickle_load("/tmp/batch")
+        #source = batch.source.padded
+        #target = batch.target.padded
+        #translation_tensors = batch.translation_tensors.padded
+        #~translation_tensors.sum(dim=-1).eq(0.)
+
         predictions = self(batch)
         target_padded = batch.target.padded
         # -> B x target_vocab_size x seq_len. For loss.
@@ -514,4 +531,10 @@ class BaseEncoderDecoder(pl.LightningModule):
             default=defaults.HIDDEN_SIZE,
             help="Dimensionality of the hidden layer(s). "
             "Default: %(default)s.",
+        )
+        parser.add_argument(
+            "--tama_use_translation",
+            default=defaults.TAMA_USE_TRANSLATION,
+            action="store_true",
+            help="when True, use aligned translation reprs."
         )

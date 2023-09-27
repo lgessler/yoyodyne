@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import pickle
 
 
 def log_info(msg: str) -> None:
@@ -27,3 +28,12 @@ def log_arguments(args: argparse.Namespace) -> None:
         if val is None:
             continue
         log_info(f"\t{arg}: {val!r}")
+
+
+def pickle_load(fp):
+    with open(fp, 'rb') as f:
+        return pickle.load(f)
+
+def pickle_dump(fp, o):
+    with open(fp, 'wb') as f:
+        pickle.dump(o, f)
