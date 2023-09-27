@@ -25,10 +25,9 @@ class TamaItem(nn.Module):
     source: torch.Tensor
     features: Optional[torch.Tensor]
     target: Optional[torch.Tensor]
-    translation_wps: Optional[torch.Tensor]
     translation_tensors: Optional[torch.Tensor]
 
-    def __init__(self, source, features=None, target=None, translation_wps=None, translation_tensors=None):
+    def __init__(self, source, features=None, target=None, translation_tensors=None):
         """Initializes the item.
 
         Args:
@@ -40,7 +39,6 @@ class TamaItem(nn.Module):
         self.register_buffer("source", source)
         self.register_buffer("features", features)
         self.register_buffer("target", target)
-        self.register_buffer("translation_wps", translation_wps)
         self.register_buffer("translation_tensors", translation_tensors)
 
     @property
@@ -213,9 +211,12 @@ class TamaDataset(data.Dataset):
         assert not self.has_features and self.has_target
         inst, [pool_repr, translation_tensors] = self.samples[idx]
         translation_wps = inst["translation_aligned_wps"]
+        if len(translation_wps) > 0:
+            tensors = torch.stack([translation_tensors[i] for i in translation_wps], dim=0)
+        else:
+            tensors = torch.empty((0, pool_repr.shape[0]))
         return TamaItem(
             source=self.encode_source(list(inst["source"])),
             target=self.encode_target(list(inst["target"])),
-            translation_wps=torch.tensor(translation_wps),
-            translation_tensors=translation_tensors,
+            translation_tensors=tensors,
         )

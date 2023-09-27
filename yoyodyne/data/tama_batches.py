@@ -101,15 +101,13 @@ class TamaPaddedBatch(nn.Module):
     source: TamaPaddedTensor
     features: Optional[TamaPaddedTensor]
     target: Optional[TamaPaddedTensor]
-    translation_wps: Optional[torch.Tensor]
     translation_tensors: Optional[torch.Tensor]
 
-    def __init__(self, source, features=None, target=None, translation_wps=None, translation_tensors=None):
+    def __init__(self, source, features=None, target=None, translation_tensors=None):
         super().__init__()
         self.register_module("source", source)
         self.register_module("target", target)
         self.register_module("features", features)
-        self.register_module("translation_wps", translation_wps)
         self.register_module("translation_tensors", translation_tensors)
 
     @property

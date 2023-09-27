@@ -153,9 +153,6 @@ class TamaCollator:
             tama_batches.TamaPaddedBatch.
         """
         padded_target = self.pad_target(itemlist) if self.has_target else None
-        padded_translation_wps = tama_batches.TamaPaddedTensor(
-            [item.translation_wps for item in itemlist], 0
-        )
         padded_translation_tensors = tama_batches.TamaPaddedTensor(
             [item.translation_tensors for item in itemlist], 0
         )
@@ -164,14 +161,12 @@ class TamaCollator:
                 self.pad_source(itemlist),
                 features=self.pad_features(itemlist),
                 target=padded_target,
-                translation_wps=padded_translation_wps,
                 translation_tensors=padded_translation_tensors,
             )
         else:
             return tama_batches.TamaPaddedBatch(
                 self.pad_source_features(itemlist),
                 target=padded_target,
-                translation_wps=padded_translation_wps,
                 translation_tensors=padded_translation_tensors,
             )
 
