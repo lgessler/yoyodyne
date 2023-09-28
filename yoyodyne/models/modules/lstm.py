@@ -57,11 +57,14 @@ class LSTMModule(base.BaseModule):
 
 
 class LSTMEncoder(LSTMModule):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tama_encoder_strategy = kwargs["tama_encoder_strategy"]
+
     def forward(
         self, 
         batch: data.PaddedBatch,
         projected_translation: torch.Tensor,
-        tama_encoder_strategy: str,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Encodes the input.
 
@@ -75,14 +78,14 @@ class LSTMEncoder(LSTMModule):
         """
         source = batch.source
         embedded = self.embed(source.padded)
-        if tama_encoder_strategy == "init_char":
+        if self.tama_encoder_strategy == "init_char":
             embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         # Packs embedded source symbols into a PackedSequence.
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, source.lengths(), batch_first=True, enforce_sorted=False
         )
         # -> B x seq_len x encoder_dim, (h0, c0).
-        if tama_encoder_strategy == "init_state":
+        if self.tama_encoder_strategy == "init_state":
             d0 = (2 if self.bidirectional else 1) * self.layers
             h = projected_translation.shape[-1]
             assert self.hidden_size % h == 0

@@ -308,11 +308,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             projected_translation = F.dropout(self.tama_projection(avg_pooled), 0.3, self.training)
         else:
             projected_translation = None
-        encoder_out = self.source_encoder(
-            batch, 
-            projected_translation,
-            self.tama_encoder_strategy
-        ).output
+        encoder_out = self.source_encoder(batch, projected_translation).output
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(
                 encoder_out,
