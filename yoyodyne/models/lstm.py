@@ -40,12 +40,10 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self.h0 = nn.Parameter(torch.rand(self.hidden_size))
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
-        if self.tama_use_translation:
-            self.tama_projection_h_enc = nn.Linear(768, self.embedding_size, bias=False)
-            self.tama_projection_c_enc = nn.Linear(768, self.embedding_size, bias=False)
-            self.tama_projection_h_dec = nn.Linear(768, self.hidden_size, bias=False)
-            self.tama_projection_c_dec = nn.Linear(768, self.hidden_size, bias=False)
-
+        self.tama_projection_h_enc = nn.Linear(768, self.embedding_size)
+        self.tama_projection_c_enc = nn.Linear(768, self.embedding_size)
+        self.tama_projection_h_dec = nn.Linear(768, self.hidden_size)
+        self.tama_projection_c_dec = nn.Linear(768, self.hidden_size)
 
     def get_decoder(self) -> modules.lstm.LSTMDecoder:
         return modules.lstm.LSTMDecoder(
@@ -305,8 +303,8 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
             avg_pooled = trans.sum(-2) / num_elts
             avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
-            projected_translation_h = F.dropout(self.tama_projection_h_enc(avg_pooled), 0.1)
-            projected_translation_c = F.dropout(self.tama_projection_c_enc(avg_pooled), 0.1)
+            projected_translation_h = F.dropout(self.tama_projection_h_enc(avg_pooled), 0.1, self.training)
+            projected_translation_c = F.dropout(self.tama_projection_c_enc(avg_pooled), 0.1, self.training)
         else:
             projected_translation_h = None
             projected_translation_c = None
