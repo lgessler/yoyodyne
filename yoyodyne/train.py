@@ -121,6 +121,7 @@ def get_datamodule_from_argparse_args(
         separate_features=separate_features,
         max_source_length=args.max_source_length,
         max_target_length=args.max_target_length,
+        tama_train_limit=args.tama_train_limit,
     )
     if not datamodule.has_target:
         raise Error("No target column specified")
@@ -285,6 +286,12 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         "--no_log_wandb",
         action="store_false",
         dest="log_wandb",
+    )
+    parser.add_argument(
+        "--tama_train_limit",
+        type=int,
+        default=None,
+        help="Number of training instances to use"
     )
     # Data arguments.
     data.add_argparse_args(parser)
