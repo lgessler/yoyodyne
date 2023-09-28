@@ -146,8 +146,6 @@ class LSTMDecoder(LSTMModule):
         if self.tama_decoder_strategy == "concat":
             kwargs["embedding_size"] *= 2
         self.decoder_input_size = decoder_input_size
-        if self.tama_decoder_strategy == "init_char":
-            self.decoder_input_size += 1
         super().__init__(*args, **kwargs)
         if self.tama_decoder_strategy == "concat":
             assert kwargs["embedding_size"] % 2 == 0
