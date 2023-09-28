@@ -51,6 +51,7 @@ def get_datamodule_from_argparse_args(
         max_source_length=args.max_source_length,
         max_target_length=args.max_target_length,
         index=index,
+        tama_incl_cls_token=args.tama_incl_cls_token,
     )
 
 
@@ -143,6 +144,12 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         "--tama_decoder_strategy",
         choices=["none", "init_char", "init_state", "concat"],
         default="none",
+    )
+    parser.add_argument(
+        "--tama_incl_cls_token",
+        action="store_true",
+        default=False,
+        help="Number of training instances to use"
     )
     # Prediction arguments.
     # TODO: add --beam_width.

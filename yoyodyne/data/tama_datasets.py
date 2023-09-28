@@ -57,6 +57,7 @@ class TamaDataset(data.Dataset):
     samples: List[Any]
     index: indexes.Index  # Usually copied from the DataModule.
     parser: tama_parser.TamaParser  # Ditto.
+    tama_incl_cls_token: bool
 
     @property
     def has_features(self) -> bool:
@@ -211,10 +212,17 @@ class TamaDataset(data.Dataset):
         assert not self.has_features and self.has_target
         inst, [pool_repr, translation_tensors] = self.samples[idx]
         translation_wps = inst["translation_aligned_wps"]
-        if len(translation_wps) > 0:
-            tensors = torch.stack([translation_tensors[i] for i in translation_wps], dim=0)
+
+        if self.tama_incl_cls_token:
+            if len(translation_wps) > 0:
+                tensors = torch.stack([pool_repr] + [translation_tensors[i] for i in translation_wps], dim=0)
+            else:
+                tensors = pool_repr.unsqueeze(0)
         else:
-            tensors = torch.empty((0, pool_repr.shape[0]))
+            if len(translation_wps) > 0:
+                tensors = torch.stack([translation_tensors[i] for i in translation_wps], dim=0)
+            else:
+                tensors = torch.empty((0, pool_repr.shape[0]))
         return TamaItem(
             source=self.encode_source(list(inst["source"])),
             target=self.encode_target(list(inst["target"])),
