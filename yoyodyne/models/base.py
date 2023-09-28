@@ -51,7 +51,8 @@ class BaseEncoderDecoder(pl.LightningModule):
     hidden_size: int
     source_encoder_cls: modules.base.BaseModule
     # Custom for TAMA
-    tama_use_translation: bool
+    tama_encoder_strategy: str
+    tama_decoder_strategy: str
     # Constructed inside __init__.
     dropout_layer: nn.Dropout
     evaluator: evaluators.Evaluator
@@ -84,7 +85,8 @@ class BaseEncoderDecoder(pl.LightningModule):
         decoder_layers=defaults.DECODER_LAYERS,
         embedding_size=defaults.EMBEDDING_SIZE,
         hidden_size=defaults.HIDDEN_SIZE,
-        tama_use_translation=defaults.TAMA_USE_TRANSLATION,
+        tama_encoder_strategy=defaults.TAMA_ENCODER_STRATEGY,
+        tama_decoder_strategy=defaults.TAMA_DECODER_STRATEGY,
         **kwargs,  # Ignored.
     ):
         super().__init__()
@@ -113,7 +115,8 @@ class BaseEncoderDecoder(pl.LightningModule):
         self.embedding_size = embedding_size
         self.encoder_layers = encoder_layers
         self.hidden_size = hidden_size
-        self.tama_use_translation = tama_use_translation
+        self.tama_encoder_strategy = tama_encoder_strategy
+        self.tama_decoder_strategy = tama_decoder_strategy
         self.dropout_layer = nn.Dropout(p=self.dropout, inplace=False)
         self.evaluator = evaluators.Evaluator()
         # Checks compatibility with feature encoder and dataloader.
@@ -130,7 +133,7 @@ class BaseEncoderDecoder(pl.LightningModule):
             embedding_size=self.embedding_size,
             layers=self.encoder_layers,
             hidden_size=self.hidden_size,
-            tama_use_translation=self.tama_use_translation,
+            tama_encoder_strategy=self.tama_encoder_strategy,
             features_vocab_size=features_vocab_size,
             max_source_length=max_source_length,
             **kwargs,
@@ -145,7 +148,7 @@ class BaseEncoderDecoder(pl.LightningModule):
                 embedding_size=self.embedding_size,
                 layers=self.encoder_layers,
                 hidden_size=self.hidden_size,
-                tama_use_translation=self.tama_use_translation,
+                tama_encoder_strategy=self.tama_encoder_strategy,
                 max_source_length=max_source_length,
                 **kwargs,
             )
@@ -535,8 +538,10 @@ class BaseEncoderDecoder(pl.LightningModule):
             "Default: %(default)s.",
         )
         parser.add_argument(
-            "--tama_use_translation",
-            default=defaults.TAMA_USE_TRANSLATION,
-            action="store_true",
-            help="when True, use aligned translation reprs."
+            "--tama_encoder_strategy",
+            default=defaults.TAMA_ENCODER_STRATEGY,
+        )
+        parser.add_argument(
+            "--tama_decoder_strategy",
+            default=defaults.TAMA_DECODER_STRATEGY,
         )

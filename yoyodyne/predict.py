@@ -135,8 +135,14 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         help="Path to prediction output data TSV.",
     )
     parser.add_argument(
-        "--tama_use_translation",
-        action="store_true"
+        "--tama_encoder_strategy",
+        choices=["none", "init_char", "init_state", "concat"],
+        default="none",
+    )
+    parser.add_argument(
+        "--tama_decoder_strategy",
+        choices=["none", "init_char", "init_state", "concat"],
+        default="none",
     )
     # Prediction arguments.
     # TODO: add --beam_width.

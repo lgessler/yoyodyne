@@ -61,7 +61,7 @@ class LSTMEncoder(LSTMModule):
         self, 
         batch: data.PaddedBatch,
         projected_translation: torch.Tensor,
-        tama_use_translation: bool,
+        tama_encoder_strategy: str,
     ) -> Tuple[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         """Encodes the input.
 
@@ -75,7 +75,7 @@ class LSTMEncoder(LSTMModule):
         """
         source = batch.source
         embedded = self.embed(source.padded)
-        if tama_use_translation:
+        if tama_encoder_strategy == "init_char":
             embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         # Packs embedded source symbols into a PackedSequence.
         packed = nn.utils.rnn.pack_padded_sequence(

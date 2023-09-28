@@ -300,7 +300,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions (torch.Tensor): tensor of predictions of shape
                 (seq_len, batch_size, target_vocab_size).
         """
-        if self.tama_use_translation:
+        if self.tama_encoder_strategy != "none" or self.tama_decoder_strategy != "none":
             trans = batch.translation_tensors.padded
             num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
             avg_pooled = trans.sum(-2) / num_elts
@@ -311,7 +311,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         encoder_out = self.source_encoder(
             batch, 
             projected_translation,
-            self.tama_use_translation
+            self.tama_encoder_strategy
         ).output
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(
