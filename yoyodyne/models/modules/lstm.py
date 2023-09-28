@@ -58,8 +58,18 @@ class LSTMModule(base.BaseModule):
 
 class LSTMEncoder(LSTMModule):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
         self.tama_encoder_strategy = kwargs["tama_encoder_strategy"]
+        if self.tama_encoder_strategy == "concat":
+            kwargs["embedding_size"] *= 2
+        super().__init__(*args, **kwargs)
+        # We need to override the embedding init to account for the concat
+        if self.tama_encoder_strategy == "concat":
+            assert kwargs["embedding_size"] % 2 == 0
+            self.embeddings = self.init_embeddings(
+                kwargs["num_embeddings"],
+                kwargs["embedding_size"] // 2,
+                kwargs["pad_idx"]
+            )
 
     def forward(
         self, 
@@ -78,8 +88,12 @@ class LSTMEncoder(LSTMModule):
         """
         source = batch.source
         embedded = self.embed(source.padded)
+
         if self.tama_encoder_strategy == "init_char":
             embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
+        elif self.tama_encoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
         # Packs embedded source symbols into a PackedSequence.
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, source.lengths(), batch_first=True, enforce_sorted=False
