@@ -134,6 +134,10 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         required=True,
         help="Path to prediction output data TSV.",
     )
+    parser.add_argument(
+        "--tama_use_translation",
+        action="store_true"
+    )
     # Prediction arguments.
     # TODO: add --beam_width.
     # Data arguments.

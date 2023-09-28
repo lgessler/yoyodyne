@@ -130,6 +130,7 @@ class BaseEncoderDecoder(pl.LightningModule):
             embedding_size=self.embedding_size,
             layers=self.encoder_layers,
             hidden_size=self.hidden_size,
+            tama_use_translation=self.tama_use_translation,
             features_vocab_size=features_vocab_size,
             max_source_length=max_source_length,
             **kwargs,
@@ -144,6 +145,7 @@ class BaseEncoderDecoder(pl.LightningModule):
                 embedding_size=self.embedding_size,
                 layers=self.encoder_layers,
                 hidden_size=self.hidden_size,
+                tama_use_translation=self.tama_use_translation,
                 max_source_length=max_source_length,
                 **kwargs,
             )

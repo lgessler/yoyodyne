@@ -192,6 +192,7 @@ def get_model_from_argparse_args(
         features_encoder_cls=features_encoder_cls,
         features_vocab_size=features_vocab_size,
         hidden_size=args.hidden_size,
+        tama_use_translation=args.tama_use_translation,
         label_smoothing=args.label_smoothing,
         learning_rate=args.learning_rate,
         max_source_length=args.max_source_length,

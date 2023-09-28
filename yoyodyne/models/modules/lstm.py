@@ -82,7 +82,17 @@ class LSTMEncoder(LSTMModule):
         )
         # -> B x seq_len x encoder_dim, (h0, c0).
         if tama_use_translation:
-            packed_outs, (H, C) = self.module(packed, (projected_translation_h, projected_translation_c))
+            d0 = (2 if self.bidirectional else 1) * self.layers
+            h = projected_translation_c.shape[-1]
+            assert self.hidden_size % h == 0
+            d2 = self.hidden_size // h
+            packed_outs, (H, C) = self.module(
+                packed,
+                (
+                    projected_translation_h.unsqueeze(0).repeat(d0, 1, d2),
+                    projected_translation_c.unsqueeze(0).repeat(d0, 1, d2)
+                )
+            )
         else:
             packed_outs, (H, C) = self.module(packed)
         encoded, _ = nn.utils.rnn.pad_packed_sequence(

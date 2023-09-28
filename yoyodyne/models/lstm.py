@@ -10,6 +10,7 @@ import torch.nn.functional as F
 
 from .. import data, defaults
 from . import base, modules
+from ..util import pickle_dump, pickle_load
 
 
 class LSTMEncoderDecoder(base.BaseEncoderDecoder):
@@ -40,8 +41,10 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
         if self.tama_use_translation:
-            self.tama_projection_h = nn.Linear(768, self.embedding_size, bias=False)
-            self.tama_projection_c = nn.Linear(768, self.embedding_size, bias=False)
+            self.tama_projection_h_enc = nn.Linear(768, self.embedding_size, bias=False)
+            self.tama_projection_c_enc = nn.Linear(768, self.embedding_size, bias=False)
+            self.tama_projection_h_dec = nn.Linear(768, self.hidden_size, bias=False)
+            self.tama_projection_c_dec = nn.Linear(768, self.hidden_size, bias=False)
 
 
     def get_decoder(self) -> modules.lstm.LSTMDecoder:
@@ -82,6 +85,8 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self,
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation_h,
+        projected_translation_c,
         teacher_forcing: bool,
         target: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
@@ -106,7 +111,10 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         """
         batch_size = encoder_mask.shape[0]
         # Initializes hidden states for decoder LSTM.
-        decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
+        if self.tama_use_translation and projected_translation_c is not None:
+            decoder_hiddens = (projected_translation_h, projected_translation_c)
+        else:
+            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
         # Feed in the first decoder input, as a start tag.
         # -> B x 1.
         decoder_input = (
@@ -294,10 +302,11 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         """
         if self.tama_use_translation:
             trans = batch.translation_tensors.padded
-            trans_mask = ~trans.sum(-1).eq(0)
-            avg_pooled = trans.sum(-2) / trans_mask.sum(-1).unsqueeze(-1)
-            projected_translation_h = F.dropout(self.tama_projection_h(avg_pooled), 0.1)
-            projected_translation_c = F.dropout(self.tama_projection_c(avg_pooled), 0.1)
+            num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
+            avg_pooled = trans.sum(-2) / num_elts
+            avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
+            projected_translation_h = F.dropout(self.tama_projection_h_enc(avg_pooled), 0.1)
+            projected_translation_c = F.dropout(self.tama_projection_c_enc(avg_pooled), 0.1)
         else:
             projected_translation_h = None
             projected_translation_c = None
@@ -314,9 +323,14 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 beam_width=self.beam_width,
             )
         else:
+            if self.tama_use_translation:
+                projected_translation_h = F.dropout(self.tama_projection_h_dec(avg_pooled), 0.1)
+                projected_translation_c = F.dropout(self.tama_projection_c_dec(avg_pooled), 0.1)
             predictions = self.decode(
                 encoder_out,
                 batch.source.mask,
+                None,
+                None,
                 self.teacher_forcing if self.training else False,
                 batch.target.padded if batch.target else None,
             )
