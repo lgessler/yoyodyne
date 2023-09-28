@@ -142,8 +142,20 @@ class LSTMEncoder(LSTMModule):
 
 class LSTMDecoder(LSTMModule):
     def __init__(self, *args, decoder_input_size, **kwargs):
+        self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
+        if self.tama_decoder_strategy == "concat":
+            kwargs["embedding_size"] *= 2
         self.decoder_input_size = decoder_input_size
+        if self.tama_decoder_strategy == "init_char":
+            self.decoder_input_size += 1
         super().__init__(*args, **kwargs)
+        if self.tama_decoder_strategy == "concat":
+            assert kwargs["embedding_size"] % 2 == 0
+            self.embeddings = self.init_embeddings(
+                kwargs["num_embeddings"],
+                kwargs["embedding_size"] // 2,
+                kwargs["pad_idx"]
+            )
 
     def forward(
         self,
@@ -151,6 +163,7 @@ class LSTMDecoder(LSTMModule):
         last_hiddens: torch.Tensor,
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Single decode pass.
 
@@ -169,6 +182,9 @@ class LSTMDecoder(LSTMModule):
                 and the previous hidden states from the decoder LSTM.
         """
         embedded = self.embed(symbol)
+        if self.tama_decoder_strategy == "init_char":
+            embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
+
         # -> 1 x B x decoder_dim.
         # Get the index of the last unmasked tensor.
         # -> B.

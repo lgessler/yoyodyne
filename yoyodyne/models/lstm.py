@@ -82,6 +82,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         encoder_mask: torch.Tensor,
         teacher_forcing: bool,
         target: Optional[torch.Tensor] = None,
+        projected_translation: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Decodes a sequence given the encoded input.
 
@@ -133,7 +134,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         for t in range(num_steps):
             # pred: B x 1 x output_size.
             decoded = self.decoder(
-                decoder_input, decoder_hiddens, encoder_out, encoder_mask
+                decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translations
             )
             decoder_output, decoder_hiddens = decoded.output, decoded.hiddens
             logits = self.classifier(decoder_output)
@@ -300,7 +301,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions (torch.Tensor): tensor of predictions of shape
                 (seq_len, batch_size, target_vocab_size).
         """
-        if self.tama_encoder_strategy != "none" or self.tama_decoder_strategy != "none":
+        if self.tama_use_translation:
             trans = batch.translation_tensors.padded
             num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
             avg_pooled = trans.sum(-2) / num_elts
@@ -308,12 +309,18 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             projected_translation = F.dropout(self.tama_projection(avg_pooled), 0.3, self.training)
         else:
             projected_translation = None
-        encoder_out = self.source_encoder(batch, projected_translation).output
+        encoder_out = self.source_encoder(
+            batch, 
+            projected_translation,
+            self.tama_use_translation
+        ).output
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(
                 encoder_out,
                 batch.source.mask,
                 beam_width=self.beam_width,
+                projected_translation if self.tama_use_translation else None
+
             )
         else:
             predictions = self.decode(
@@ -321,6 +328,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 batch.source.mask,
                 self.teacher_forcing if self.training else False,
                 batch.target.padded if batch.target else None,
+                projected_translation if self.tama_use_translation else None,
             )
         # -> B x seq_len x target_vocab_size.
         predictions = predictions.transpose(0, 1)
