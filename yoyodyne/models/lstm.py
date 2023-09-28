@@ -54,6 +54,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             embedding_size=self.embedding_size,
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
+            tama_decoder_strategy = self.tama_decoder_strategy
         )
 
     def init_hiddens(
@@ -374,6 +375,7 @@ class AttentiveLSTMEncoderDecoder(LSTMEncoderDecoder):
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
             attention_input_size=self.source_encoder.output_size,
+            tama_decoder_strategy = self.tama_decoder_strategy
         )
 
     @property
