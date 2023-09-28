@@ -167,6 +167,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self,
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
         beam_width: int,
         n: int = 1,
         return_confidences: bool = False,
@@ -228,7 +229,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                     [beam_idxs[-1]], device=self.device, dtype=torch.long
                 ).unsqueeze(1)
                 decoded = self.decoder(
-                    decoder_input, decoder_hiddens, encoder_out, encoder_mask
+                    decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translation
                 )
                 logits = self.classifier(decoded.output)
                 likelihoods.append(
@@ -318,10 +319,8 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions = self.beam_decode(
                 encoder_out,
                 batch.source.mask,
-                beam_width=self.beam_width,
-                projected_translation if self.tama_use_translation else None
-
-            )
+                projected_translation if self.tama_use_translation else None,
+                beam_width=self.beam_width            )
         else:
             predictions = self.decode(
                 encoder_out,
