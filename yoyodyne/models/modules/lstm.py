@@ -263,7 +263,9 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         """
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "init_char":
-            embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
+            embedded = torch.concat((projected_translation.unsqueeze(1), encoder_out), dim=1)
+            zeros = torch.zeros(encoder_mask.shape[0], 1)
+            encoder_mask = torch.concat((encoder_mask, zeros), dim = 1)
         # -> 1 x B x decoder_dim.
         last_h0, last_c0 = last_hiddens
         context, attention_weights = self.attention(
