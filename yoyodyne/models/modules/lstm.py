@@ -243,6 +243,7 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         last_hiddens: Tuple[torch.Tensor, torch.Tensor],
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Single decode pass.
 
@@ -261,6 +262,8 @@ class LSTMAttentiveDecoder(LSTMDecoder):
                 and the previous hidden states from the decoder LSTM.
         """
         embedded = self.embed(symbol)
+        if self.tama_decoder_strategy == "init_char":
+            embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         # -> 1 x B x decoder_dim.
         last_h0, last_c0 = last_hiddens
         context, attention_weights = self.attention(

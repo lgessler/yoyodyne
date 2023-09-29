@@ -320,7 +320,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions = self.beam_decode(
                 encoder_out,
                 batch.source.mask,
-                projected_translation if self.tama_use_translation else None,
+                projected_translation if not self.tama_decoder_strategy is None else None,
                 beam_width=self.beam_width            )
         else:
             predictions = self.decode(
@@ -328,7 +328,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 batch.source.mask,
                 self.teacher_forcing if self.training else False,
                 batch.target.padded if batch.target else None,
-                projected_translation if self.tama_use_translation else None,
+                projected_translation if not self.tama_decoder_strategy is None else None,
             )
         # -> B x seq_len x target_vocab_size.
         predictions = predictions.transpose(0, 1)
