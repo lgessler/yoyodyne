@@ -135,7 +135,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         for t in range(num_steps):
             # pred: B x 1 x output_size.
             decoded = self.decoder(
-                decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translations
+                decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translation
             )
             decoder_output, decoder_hiddens = decoded.output, decoded.hiddens
             logits = self.classifier(decoder_output)

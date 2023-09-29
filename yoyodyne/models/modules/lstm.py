@@ -225,10 +225,12 @@ class LSTMDecoder(LSTMModule):
 
 
 class LSTMAttentiveDecoder(LSTMDecoder):
-    attention_input_size: int
+    attention_input_size: int         
 
     def __init__(self, *args, attention_input_size, **kwargs):
         """Initializes the encoder-decoder with attention."""
+        self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
+
         super().__init__(*args, **kwargs)
         self.attention_input_size = attention_input_size
         self.attention = attention.Attention(
