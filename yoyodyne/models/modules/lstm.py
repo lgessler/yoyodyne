@@ -93,7 +93,9 @@ class LSTMEncoder(LSTMModule):
             embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         elif self.tama_encoder_strategy == "concat":
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
-            embedded = torch.concat((embedded, expanded_translation), dim=2)
+            mask = (~batch.source.mask).unsqueeze(-1)
+            masked_translation = expanded_translation * mask
+            embedded = torch.concat((embedded, masked_translation), dim=2)
         # Packs embedded source symbols into a PackedSequence.
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, source.lengths(), batch_first=True, enforce_sorted=False
