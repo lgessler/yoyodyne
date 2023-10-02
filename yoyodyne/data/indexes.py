@@ -74,7 +74,7 @@ class Index:
             target_vocabulary (List[str], optional).
         """
         super().__init__()
-        vocab = sorted(set(source_vocabulary) & set(target_vocabulary))
+        vocab = sorted(set(source_vocabulary) | set(target_vocabulary))
         self.source_map = SymbolMap(vocab)
         self.features_map = (
             SymbolMap(features_vocabulary) if features_vocabulary else None
