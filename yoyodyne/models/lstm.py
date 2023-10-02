@@ -106,17 +106,17 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         """
         batch_size = encoder_mask.shape[0]
         # Initializes hidden states for decoder LSTM.
-        #if self.tama_use_translation:
-        #    d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
-        #    h = projected_translation_c.shape[-1]
-        #    assert self.decoder.hidden_size % h == 0
-        #    d2 = self.decoder.hidden_size // h
-        #    decoder_hiddens = (
-        #        projected_translation_h.unsqueeze(0).repeat(d0, 1, d2),
-        #        projected_translation_c.unsqueeze(0).repeat(d0, 1, d2)
-        #    )
-        #else:
-        decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
+        if self.tama_decoder_strategy == "init_state":
+           d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
+           h = projected_translation.shape[-1]
+           assert self.decoder.hidden_size % h == 0
+           d2 = self.decoder.hidden_size // h
+           decoder_hiddens = (
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2),
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2)
+           )
+        else:
+            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
         # Feed in the first decoder input, as a start tag.
         # -> B x 1.
         decoder_input = (

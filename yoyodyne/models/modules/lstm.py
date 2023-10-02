@@ -180,9 +180,6 @@ class LSTMDecoder(LSTMModule):
                 and the previous hidden states from the decoder LSTM.
         """
         embedded = self.embed(symbol)
-        if self.tama_decoder_strategy == "init_char":
-            embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
-
         # -> 1 x B x decoder_dim.
         # Get the index of the last unmasked tensor.
         # -> B.
@@ -262,13 +259,13 @@ class LSTMAttentiveDecoder(LSTMDecoder):
                 and the previous hidden states from the decoder LSTM.
         """
         embedded = self.embed(symbol)
-        if self.tama_decoder_strategy == "init_char":
-            embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         # -> 1 x B x decoder_dim.
         last_h0, last_c0 = last_hiddens
         context, attention_weights = self.attention(
             last_h0.transpose(0, 1), encoder_out, encoder_mask
         )
+        print(embedded.shape())
+        print(context.shape())
         output, hiddens = self.module(
             torch.cat((embedded, context), 2), last_hiddens
         )
