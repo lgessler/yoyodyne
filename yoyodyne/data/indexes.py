@@ -74,12 +74,13 @@ class Index:
             target_vocabulary (List[str], optional).
         """
         super().__init__()
-        self.source_map = SymbolMap(source_vocabulary)
+        vocab = sorted(set(source_vocabulary) & set(target_vocabulary))
+        self.source_map = SymbolMap(vocab)
         self.features_map = (
             SymbolMap(features_vocabulary) if features_vocabulary else None
         )
         self.target_map = (
-            SymbolMap(target_vocabulary) if target_vocabulary else None
+            SymbolMap(vocab) if target_vocabulary else None
         )
 
     # Serialization support.
