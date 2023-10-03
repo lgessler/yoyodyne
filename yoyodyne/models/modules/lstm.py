@@ -179,12 +179,9 @@ class LSTMDecoder(LSTMModule):
             Tuple[torch.Tensor, torch.Tensor]: Decoder output,
                 and the previous hidden states from the decoder LSTM.
         """
-        #B x seq_len x embed_dim.
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "concat":
-            # one translation embedding per each input char (in this case just the 1 character (1, seq_len, 128[embed-dim]))
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
-            #dim 2 = embed_dim
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         # -> 1 x B x decoder_dim.
         # Get the index of the last unmasked tensor.
@@ -232,16 +229,7 @@ class LSTMAttentiveDecoder(LSTMDecoder):
     def __init__(self, *args, attention_input_size, **kwargs):
         """Initializes the encoder-decoder with attention."""
         self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
-        # if self.tama_decoder_strategy == "concat":
-        #     kwargs["embedding_size"] *= 2
         super().__init__(*args, **kwargs)
-        # if self.tama_decoder_strategy == "concat":
-        #     assert kwargs["embedding_size"] % 2 == 0
-        #     self.embeddings = self.init_embeddings(
-        #         kwargs["num_embeddings"],
-        #         kwargs["embedding_size"] // 2,
-        #         kwargs["pad_idx"]
-        #     )
         self.attention_input_size = attention_input_size
         self.attention = attention.Attention(
             self.attention_input_size, self.hidden_size
@@ -274,11 +262,8 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         #B x seq_len x embed_dim
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "concat":
-            # one translation embedding per each input char (in this case just the 1 character (1, seq_len, 128[embed-dim]))
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
-            #dim 2 = embed_dim
             embedded = torch.concat((embedded, expanded_translation), dim=2)
-        # -> 1 x B x decoder_dim.
         last_h0, last_c0 = last_hiddens
         context, attention_weights = self.attention(
             last_h0.transpose(0, 1), encoder_out, encoder_mask
