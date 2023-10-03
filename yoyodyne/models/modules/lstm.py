@@ -1,4 +1,4 @@
-"""LSTM model classes."""
+"""LSTM model classes. test"""
 
 from typing import Tuple
 
@@ -144,8 +144,18 @@ class LSTMEncoder(LSTMModule):
 
 class LSTMDecoder(LSTMModule):
     def __init__(self, *args, decoder_input_size, **kwargs):
+        self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
+        if self.tama_decoder_strategy == "concat":
+            kwargs["embedding_size"] *= 2
         self.decoder_input_size = decoder_input_size
         super().__init__(*args, **kwargs)
+        if self.tama_decoder_strategy == "concat":
+            assert kwargs["embedding_size"] % 2 == 0
+            self.embeddings = self.init_embeddings(
+                kwargs["num_embeddings"],
+                kwargs["embedding_size"] // 2,
+                kwargs["pad_idx"]
+            )
 
     def forward(
         self,
@@ -153,6 +163,7 @@ class LSTMDecoder(LSTMModule):
         last_hiddens: torch.Tensor,
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Single decode pass.
 
@@ -171,6 +182,9 @@ class LSTMDecoder(LSTMModule):
                 and the previous hidden states from the decoder LSTM.
         """
         embedded = self.embed(symbol)
+        if self.tama_decoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
         # -> 1 x B x decoder_dim.
         # Get the index of the last unmasked tensor.
         # -> B.
@@ -213,10 +227,10 @@ class LSTMDecoder(LSTMModule):
 
 
 class LSTMAttentiveDecoder(LSTMDecoder):
-    attention_input_size: int
-
+    attention_input_size: int       
     def __init__(self, *args, attention_input_size, **kwargs):
         """Initializes the encoder-decoder with attention."""
+        self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
         super().__init__(*args, **kwargs)
         self.attention_input_size = attention_input_size
         self.attention = attention.Attention(
@@ -229,6 +243,7 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         last_hiddens: Tuple[torch.Tensor, torch.Tensor],
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Single decode pass.
 
@@ -246,12 +261,16 @@ class LSTMAttentiveDecoder(LSTMDecoder):
             Tuple[torch.Tensor, torch.Tensor]: Decoder output,,
                 and the previous hidden states from the decoder LSTM.
         """
+        #B x seq_len x embed_dim
         embedded = self.embed(symbol)
-        # -> 1 x B x decoder_dim.
+        if self.tama_decoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
         last_h0, last_c0 = last_hiddens
         context, attention_weights = self.attention(
             last_h0.transpose(0, 1), encoder_out, encoder_mask
         )
+        context.repeat(1, embedded.shape[1], 1)
         output, hiddens = self.module(
             torch.cat((embedded, context), 2), last_hiddens
         )

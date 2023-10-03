@@ -54,6 +54,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             embedding_size=self.embedding_size,
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
+            tama_decoder_strategy = self.tama_decoder_strategy
         )
 
     def init_hiddens(
@@ -82,6 +83,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         encoder_mask: torch.Tensor,
         teacher_forcing: bool,
         target: Optional[torch.Tensor] = None,
+        projected_translation: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Decodes a sequence given the encoded input.
 
@@ -104,17 +106,17 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         """
         batch_size = encoder_mask.shape[0]
         # Initializes hidden states for decoder LSTM.
-        #if self.tama_use_translation:
-        #    d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
-        #    h = projected_translation_c.shape[-1]
-        #    assert self.decoder.hidden_size % h == 0
-        #    d2 = self.decoder.hidden_size // h
-        #    decoder_hiddens = (
-        #        projected_translation_h.unsqueeze(0).repeat(d0, 1, d2),
-        #        projected_translation_c.unsqueeze(0).repeat(d0, 1, d2)
-        #    )
-        #else:
-        decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
+        if self.tama_decoder_strategy == "init_state":
+           d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
+           h = projected_translation.shape[-1]
+           assert self.decoder.hidden_size % h == 0
+           d2 = self.decoder.hidden_size // h
+           decoder_hiddens = (
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2),
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2)
+           )
+        else:
+            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
         # Feed in the first decoder input, as a start tag.
         # -> B x 1.
         decoder_input = (
@@ -133,7 +135,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         for t in range(num_steps):
             # pred: B x 1 x output_size.
             decoded = self.decoder(
-                decoder_input, decoder_hiddens, encoder_out, encoder_mask
+                decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translation
             )
             decoder_output, decoder_hiddens = decoded.output, decoded.hiddens
             logits = self.classifier(decoder_output)
@@ -166,6 +168,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self,
         encoder_out: torch.Tensor,
         encoder_mask: torch.Tensor,
+        projected_translation: torch.Tensor,
         beam_width: int,
         n: int = 1,
         return_confidences: bool = False,
@@ -227,7 +230,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                     [beam_idxs[-1]], device=self.device, dtype=torch.long
                 ).unsqueeze(1)
                 decoded = self.decoder(
-                    decoder_input, decoder_hiddens, encoder_out, encoder_mask
+                    decoder_input, decoder_hiddens, encoder_out, encoder_mask, projected_translation
                 )
                 logits = self.classifier(decoded.output)
                 likelihoods.append(
@@ -313,14 +316,15 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions = self.beam_decode(
                 encoder_out,
                 batch.source.mask,
-                beam_width=self.beam_width,
-            )
+                projected_translation if not self.tama_decoder_strategy is None else None,
+                beam_width=self.beam_width            )
         else:
             predictions = self.decode(
                 encoder_out,
                 batch.source.mask,
                 self.teacher_forcing if self.training else False,
                 batch.target.padded if batch.target else None,
+                projected_translation if not self.tama_decoder_strategy is None else None,
             )
         # -> B x seq_len x target_vocab_size.
         predictions = predictions.transpose(0, 1)
@@ -367,6 +371,7 @@ class AttentiveLSTMEncoderDecoder(LSTMEncoderDecoder):
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
             attention_input_size=self.source_encoder.output_size,
+            tama_decoder_strategy = self.tama_decoder_strategy
         )
 
     @property
