@@ -134,6 +134,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
             attention_input_size=self.source_encoder.output_size,
+            tama_decoder_strategy=self.tama_decoder_strategy,
         )
 
     def _check_layer_sizes(self) -> None:
