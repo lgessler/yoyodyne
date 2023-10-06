@@ -306,6 +306,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
                 repr = torch.concat((cls_fixed, torch.zeros_like(cls_fixed)), dim=-1)
             else:
                 trans = trans[:, 1:]
+                num_elts -= 1
                 avg_pooled = trans.sum(-2) / num_elts
                 avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
                 wp_fixed = self.tama_projection(avg_pooled)
@@ -313,6 +314,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         elif self.tama_cls_token_strategy in ["avg", "none"]:
             if self.tama_cls_token_strategy == "none":
                 trans = trans[:, 1:]
+                num_elts -= 1
             avg_pooled = trans.sum(-2) / num_elts
             avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
             repr = self.tama_projection(avg_pooled)
