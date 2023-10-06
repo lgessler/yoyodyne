@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from .. import data, defaults
 from . import base, modules
-from ..util import pickle_dump, pickle_load
+from yoyodyne.util import pickle_dump, pickle_load
 
 
 class LSTMEncoderDecoder(base.BaseEncoderDecoder):
@@ -41,7 +41,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
 
-        target_size = self.embedding_size if self.tama_cls_token_strategy == "avg" else self.embedding_size // 2
+        target_size = self.embedding_size // 2 if self.tama_cls_token_strategy == "concat" else self.embedding_size
         self.tama_projection = nn.Linear(768, target_size)
         # we only use this if self.tama_cls_token_strategy == "concat"
         self.tama_cls_projection = nn.Linear(768, target_size)
