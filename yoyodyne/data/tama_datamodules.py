@@ -43,7 +43,7 @@ class TamaDataModule(pl.LightningDataModule):
         # Indexing.
         index: Optional[indexes.Index] = None,
         tama_train_limit: int = None,
-        tama_incl_cls_token: bool = False,
+        tama_cls_token_strategy: str = "none",
     ):
         super().__init__()
         self.parser = TamaParser()
@@ -66,7 +66,7 @@ class TamaDataModule(pl.LightningDataModule):
             max_target_length=max_target_length,
         )
         self.tama_train_limit = tama_train_limit
-        self.tama_incl_cls_token = tama_incl_cls_token
+        self.tama_cls_token_Strategy = tama_cls_token_strategy
 
     def _make_index(self) -> indexes.Index:
         # Computes index.
@@ -145,7 +145,6 @@ class TamaDataModule(pl.LightningDataModule):
             insts,
             self.index,
             self.parser,
-            self.tama_incl_cls_token
         )
 
     # Required API.

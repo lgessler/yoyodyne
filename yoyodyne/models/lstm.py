@@ -40,7 +40,11 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         self.h0 = nn.Parameter(torch.rand(self.hidden_size))
         self.c0 = nn.Parameter(torch.rand(self.hidden_size))
         self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
-        self.tama_projection = nn.Linear(768, self.embedding_size)
+
+        target_size = self.embedding_size if self.tama_cls_token_strategy == "avg" else self.embedding_size // 2
+        self.tama_projection = nn.Linear(768, target_size)
+        # we only use this if self.tama_cls_token_strategy == "concat"
+        self.tama_cls_projection = nn.Linear(768, target_size)
 
     def get_decoder(self) -> modules.lstm.LSTMDecoder:
         return modules.lstm.LSTMDecoder(
@@ -54,7 +58,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             embedding_size=self.embedding_size,
             layers=self.decoder_layers,
             hidden_size=self.hidden_size,
-            tama_decoder_strategy = self.tama_decoder_strategy
+            tama_decoder_strategy=self.tama_decoder_strategy
         )
 
     def init_hiddens(
@@ -290,6 +294,33 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
         else:
             return predictions
 
+    def prepare_translation_vector(self, batch: data.PaddedBatch):
+        if self.tama_encoder_strategy == "none" and self.tama_decoder_strategy == "none":
+            return None
+        trans = batch.translation_tensors.padded
+        num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
+
+        if self.tama_cls_token_strategy == "concat":
+            cls_fixed = self.tama_cls_projection(trans[:, 0])
+            if trans.shape[1] == 1:
+                repr = torch.concat((cls_fixed, torch.zeros_like(cls_fixed)), dim=-1)
+            else:
+                trans = trans[:, 1:]
+                avg_pooled = trans.sum(-2) / num_elts
+                avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
+                wp_fixed = self.tama_projection(avg_pooled)
+                repr = torch.concat((cls_fixed, wp_fixed), dim=-1)
+        elif self.tama_cls_token_strategy in ["avg", "none"]:
+            if self.tama_cls_token_strategy == "none":
+                trans = trans[:, 1:]
+            avg_pooled = trans.sum(-2) / num_elts
+            avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
+            repr = self.tama_projection(avg_pooled)
+        else:
+            raise ValueError("Invalid cls token strategy: " + self.tama_cls_token_strategy)
+
+        return F.dropout(repr, 0.3, self.training)
+
     def forward(
         self,
         batch: data.PaddedBatch,
@@ -303,14 +334,7 @@ class LSTMEncoderDecoder(base.BaseEncoderDecoder):
             predictions (torch.Tensor): tensor of predictions of shape
                 (seq_len, batch_size, target_vocab_size).
         """
-        if self.tama_encoder_strategy != "none" or self.tama_decoder_strategy != "none":
-            trans = batch.translation_tensors.padded
-            num_elts = (~trans.sum(-1).eq(0)).sum(-1, keepdims=True)
-            avg_pooled = trans.sum(-2) / num_elts
-            avg_pooled = torch.where(~num_elts.eq(0), avg_pooled, 0)
-            projected_translation = F.dropout(self.tama_projection(avg_pooled), 0.3, self.training)
-        else:
-            projected_translation = None
+        projected_translation = self.prepare_translation_vector(batch)
         encoder_out = self.source_encoder(batch, projected_translation).output
         if self.beam_width is not None and self.beam_width > 1:
             predictions = self.beam_decode(

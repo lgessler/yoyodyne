@@ -53,6 +53,7 @@ class BaseEncoderDecoder(pl.LightningModule):
     # Custom for TAMA
     tama_encoder_strategy: str
     tama_decoder_strategy: str
+    tama_cls_token_strategy: str
     # Constructed inside __init__.
     dropout_layer: nn.Dropout
     evaluator: evaluators.Evaluator
@@ -87,6 +88,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         hidden_size=defaults.HIDDEN_SIZE,
         tama_encoder_strategy=defaults.TAMA_ENCODER_STRATEGY,
         tama_decoder_strategy=defaults.TAMA_DECODER_STRATEGY,
+        tama_cls_token_strategy=defaults.TAMA_CLS_TOKEN_STRATEGY,
         **kwargs,  # Ignored.
     ):
         super().__init__()
@@ -117,6 +119,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         self.hidden_size = hidden_size
         self.tama_encoder_strategy = tama_encoder_strategy
         self.tama_decoder_strategy = tama_decoder_strategy
+        self.tama_cls_token_strategy = tama_cls_token_strategy
         self.dropout_layer = nn.Dropout(p=self.dropout, inplace=False)
         self.evaluator = evaluators.Evaluator()
         # Checks compatibility with feature encoder and dataloader.
@@ -544,4 +547,10 @@ class BaseEncoderDecoder(pl.LightningModule):
         parser.add_argument(
             "--tama_decoder_strategy",
             default=defaults.TAMA_DECODER_STRATEGY,
+        )
+        parser.add_argument(
+            "--tama_cls_token_strategy",
+            default="none",
+            choices=["none", "avg", "concat"],
+            help="How to incorporate cls token into the translation repr",
         )

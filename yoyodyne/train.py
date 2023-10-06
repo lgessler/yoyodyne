@@ -122,7 +122,6 @@ def get_datamodule_from_argparse_args(
         max_source_length=args.max_source_length,
         max_target_length=args.max_target_length,
         tama_train_limit=args.tama_train_limit,
-        tama_incl_cls_token=args.tama_incl_cls_token,
     )
     if not datamodule.has_target:
         raise Error("No target column specified")
@@ -196,6 +195,7 @@ def get_model_from_argparse_args(
         hidden_size=args.hidden_size,
         tama_encoder_strategy=args.tama_encoder_strategy,
         tama_decoder_strategy=args.tama_decoder_strategy,
+        tama_cls_token_strategy=args.tama_cls_token_strategy,
         label_smoothing=args.label_smoothing,
         learning_rate=args.learning_rate,
         max_source_length=args.max_source_length,
@@ -292,12 +292,6 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         "--tama_train_limit",
         type=int,
         default=None,
-        help="Number of training instances to use"
-    )
-    parser.add_argument(
-        "--tama_incl_cls_token",
-        action="store_true",
-        default=False,
         help="Number of training instances to use"
     )
     # Data arguments.
