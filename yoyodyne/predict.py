@@ -136,12 +136,12 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--tama_encoder_strategy",
-        choices=["none", "init_char", "init_state", "concat"],
+        choices=["none", "init_char", "init_state", "concat", "concat2"],
         default="none",
     )
     parser.add_argument(
         "--tama_decoder_strategy",
-        choices=["none", "init_state", "concat"],
+        choices=["none", "init_state", "concat", "concat2"],
         default="none",
     )
     parser.add_argument(

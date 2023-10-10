@@ -70,6 +70,14 @@ class LSTMEncoder(LSTMModule):
                 kwargs["embedding_size"] // 2,
                 kwargs["pad_idx"]
             )
+        if self.tama_encoder_strategy == "concat2":
+            assert kwargs["embedding_size"] % 2 == 0
+            self.embeddings = self.init_embeddings(
+                kwargs["num_embeddings"],
+                kwargs["embedding_size"] // 2,
+                kwargs["pad_idx"]
+            )
+        self.concat2_trans_proj = nn.Linear(kwargs["embedding_size"], kwargs["embedding_size"] // 2)
 
     def forward(
         self, 
@@ -92,6 +100,12 @@ class LSTMEncoder(LSTMModule):
         if self.tama_encoder_strategy == "init_char":
             embedded = torch.concat((projected_translation.unsqueeze(1), embedded), dim=1)
         elif self.tama_encoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            mask = (~batch.source.mask).unsqueeze(-1)
+            masked_translation = expanded_translation * mask
+            embedded = torch.concat((embedded, masked_translation), dim=2)
+        elif self.tama_encoder_strategy == "concat2":
+            projected_translation = self.concat2_trans_proj(projected_translation)
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             mask = (~batch.source.mask).unsqueeze(-1)
             masked_translation = expanded_translation * mask
@@ -156,6 +170,14 @@ class LSTMDecoder(LSTMModule):
                 kwargs["embedding_size"] // 2,
                 kwargs["pad_idx"]
             )
+        if self.tama_decoder_strategy == "concat2":
+            assert kwargs["embedding_size"] % 2 == 0
+            self.embeddings = self.init_embeddings(
+                kwargs["num_embeddings"],
+                kwargs["embedding_size"] // 2,
+                kwargs["pad_idx"]
+            )
+        self.concat2_trans_proj = nn.Linear(kwargs["embedding_size"], kwargs["embedding_size"] // 2)
 
     def forward(
         self,
@@ -183,6 +205,10 @@ class LSTMDecoder(LSTMModule):
         """
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
+        if self.tama_decoder_strategy == "concat2":
+            projected_translation = self.concat2_trans_proj(projected_translation)
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         # -> 1 x B x decoder_dim.
@@ -264,6 +290,10 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         #B x seq_len x embed_dim
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
+        if self.tama_decoder_strategy == "concat2":
+            projected_translation = self.concat2_trans_proj(projected_translation)
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         last_h0, last_c0 = last_hiddens
