@@ -84,6 +84,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
 
     def __init__(self, *args, **kwargs):
         """Initializes the pointer-generator model with an LSTM backend."""
+        self.decoder_layers = self.encoder_layers
         super().__init__(*args, **kwargs)
         self._check_layer_sizes()
         self.tama_projection = nn.Linear(768, self.embedding_size)
