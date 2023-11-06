@@ -187,12 +187,12 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             )
             # -> B x 1 x 4*hidden_size.
             context = torch.cat([context, features_context], dim=2)
-        _, (h, c) = self.decoder.module(
+        output, (h, c) = self.decoder.module(
             torch.cat((embedded, context), 2), (last_h0, last_c0)
         )
         # -> B x 1 x hidden_size
         hidden = h[-1, :, :].unsqueeze(1)
-        output_probs = self.classifier(torch.cat([hidden, context], dim=2))
+        output_probs = self.classifier(output)
         output_probs = nn.functional.softmax(output_probs, dim=2)
         # -> B x 1 x target_vocab_size.
         ptr_probs = torch.zeros(
