@@ -91,10 +91,8 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         # We use the inherited defaults for the source embeddings/encoder.
         # Overrides classifier to take larger input.
         if not self.has_features_encoder:
-            self.classifier = nn.Linear(
-                self.hidden_size + self.source_encoder.output_size,
-                self.target_vocab_size,
-            )
+            self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
+
             self.generation_probability = GenerationProbability(  # noqa: E501
                 self.embedding_size,
                 self.hidden_size,
