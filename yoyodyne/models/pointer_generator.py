@@ -176,6 +176,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         """
         embedded = self.decoder.embed(symbol)
         last_h0, last_c0 = last_hiddens
+        #source_enc (torch.Tensor): batch of encoded input symbols.
         context, attention_weights = self.decoder.attention(
             last_h0.transpose(0, 1), source_enc, source_mask
         )
@@ -184,6 +185,9 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                 last_h0.transpose(0, 1), features_enc, features_mask
             )
             # -> B x 1 x 4*hidden_size.
+
+              # The input to decoder LSTM is the embedding concatenated to the
+            # weighted, encoded, inputs.
             context = torch.cat([context, features_context], dim=2)
         output, (h, c) = self.decoder.module(
             torch.cat((embedded, context), 2), (last_h0, last_c0)
@@ -191,7 +195,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         # -> B x 1 x hidden_size
         hidden = h[-1, :, :].unsqueeze(1)
         output_probs = self.classifier(output)
-        output_probs = nn.functional.softmax(output_probs, dim=2)
+        output_probs =  nn.functional.softmax(output_probs, dim=2)
         # -> B x 1 x target_vocab_size.
         ptr_probs = torch.zeros(
             symbol.size(0),
@@ -226,6 +230,8 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         features_enc: Optional[torch.Tensor] = None,
         features_mask: Optional[torch.Tensor] = None,
         target: Optional[torch.Tensor] = None,
+        projected_translation: Optional[torch.Tensor] = None,
+
     ) -> torch.Tensor:
         """Decodes a sequence given the encoded input.
 
@@ -253,6 +259,18 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             torch.Tensor.
         """
         batch_size = source_enc.shape[0]
+
+        if self.tama_decoder_strategy == "init_state":
+           d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
+           h = projected_translation.shape[-1]
+           assert self.decoder.hidden_size % h == 0
+           d2 = self.decoder.hidden_size // h
+           decoder_hiddens = (
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2),
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2)
+           )
+        else:
+            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
         # Feeds in the first decoder input, as a start tag.
         # -> B x 1
         decoder_input = (
@@ -352,6 +370,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                     batch.source.padded,
                     last_hiddens,
                     self.teacher_forcing if self.training else False,
+                    projected_translation if not self.tama_decoder_strategy is None else None,
                     target=batch.target.padded if batch.target else None,
                 )
         else:
