@@ -226,6 +226,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         features_enc: Optional[torch.Tensor] = None,
         features_mask: Optional[torch.Tensor] = None,
         target: Optional[torch.Tensor] = None,
+        projected_translation: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Decodes a sequence given the encoded input.
 
@@ -255,6 +256,18 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         batch_size = source_enc.shape[0]
         # Feeds in the first decoder input, as a start tag.
         # -> B x 1
+        if self.tama_decoder_strategy == "init_state":
+           d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
+           h = projected_translation.shape[-1]
+           assert self.decoder.hidden_size % h == 0
+           d2 = self.decoder.hidden_size // h
+           decoder_hiddens = (
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2),
+               projected_translation.unsqueeze(0).repeat(d0, 1, d2)
+           )
+        else:
+            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
+            
         decoder_input = (
             torch.tensor(
                 [self.start_idx], device=self.device, dtype=torch.long
@@ -352,6 +365,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                     batch.source.padded,
                     last_hiddens,
                     self.teacher_forcing if self.training else False,
+                    projected_translation if not self.tama_decoder_strategy is None else None,
                     target=batch.target.padded if batch.target else None,
                 )
         else:
@@ -375,6 +389,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                 batch.source.padded,
                 last_hiddens,
                 self.teacher_forcing if self.training else False,
+                projected_translation if not self.tama_decoder_strategy is None else None,
                 features_enc=features_encoded,
                 features_mask=batch.features.mask,
                 target=batch.target.padded if batch.target else None,
