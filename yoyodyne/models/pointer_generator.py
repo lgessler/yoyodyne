@@ -88,6 +88,8 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         super().__init__(*args, **kwargs)
         self._check_layer_sizes()
         self.tama_projection = nn.Linear(768, self.embedding_size)
+        if self.tama_decoder_strategy == "concat2":
+            self.concat2_trans_proj = nn.Linear(kwargs["embedding_size"], kwargs["embedding_size"] // 2)
         # We use the inherited defaults for the source embeddings/encoder.
         # Overrides classifier to take larger input.
         if not self.has_features_encoder:
@@ -191,10 +193,11 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         """
         embedded = self.decoder.embed(symbol)
         if self.tama_decoder_strategy == "concat":
+            print("here too")
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         if self.tama_decoder_strategy == "concat2":
-            # projected_translation = self.concat2_trans_proj(projected_translation)
+            projected_translation = self.concat2_trans_proj(projected_translation)
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         last_h0, last_c0 = last_hiddens
@@ -211,7 +214,6 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
               # The input to decoder LSTM is the embedding concatenated to the
             # weighted, encoded, inputs.
             context = torch.cat([context, features_context], dim=2)
-        print(self.decoder.module.embedding_size)
         output, (h, c) = self.decoder.module(
             torch.cat((embedded, context), 2), (last_h0, last_c0)
         )
@@ -281,23 +283,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             torch.Tensor.
         """
         batch_size = source_enc.shape[0]
-        if self.tama_decoder_strategy == "concat":
-            self.decoder.embedding_size *= 2
-        if self.tama_decoder_strategy == "concat":
-            assert self.decoder.embedding_size % 2 == 0
-            self.embeddings = self.init_embeddings(
-                self.target_vocab_size,
-                self.decoder.embedding_size // 2,
-                self.pad_idx
-            )
-        if self.tama_decoder_strategy == "concat2":
-            assert self.decoder.embedding_size  % 2 == 0
-            self.embeddings = self.init_embeddings(
-                self.target_vocab_size,
-                self.embedding_size // 2,
-                self.pad_idx
-            )
-            
+    
         # self.concat2_trans_proj = nn.Linear(self.embedding_size, self.embedding_size// 2)
 
         if self.tama_decoder_strategy == "init_state":
