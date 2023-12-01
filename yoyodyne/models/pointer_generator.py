@@ -92,7 +92,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         # Overrides classifier to take larger input.
         if not self.has_features_encoder:
             self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
-            if self.tama_decoder_strategy == "concat" or self.tama_decoder_strategy == "concat2":
+            if self.tama_decoder_strategy == "concat":
                 self.generation_probability = GenerationProbability(  # noqa: E501
                 self.embedding_size * 2,
                 self.hidden_size,
@@ -116,7 +116,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                 + self.features_encoder.output_size,
                 self.target_vocab_size,
             )
-            if self.tama_decoder_strategy == "concat" or self.tama_decoder_strategy == "concat2":
+            if self.tama_decoder_strategy == "concat":
                 self.generation_probability = GenerationProbability(  # noqa: E501
                 self.embedding_size * 2,
                 self.hidden_size,
@@ -282,16 +282,16 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         """
         batch_size = source_enc.shape[0]
         if self.tama_decoder_strategy == "concat":
-            self.embedding_size *= 2
+            self.decoder.embedding_size *= 2
         if self.tama_decoder_strategy == "concat":
-            assert self.embedding_size % 2 == 0
+            assert self.decoder.embedding_size % 2 == 0
             self.embeddings = self.init_embeddings(
                 self.target_vocab_size,
-                self.embedding_size // 2,
+                self.decoder.embedding_size // 2,
                 self.pad_idx
             )
         if self.tama_decoder_strategy == "concat2":
-            assert self.embedding_size % 2 == 0
+            assert self.decoder.embedding_size  % 2 == 0
             self.embeddings = self.init_embeddings(
                 self.target_vocab_size,
                 self.embedding_size // 2,
