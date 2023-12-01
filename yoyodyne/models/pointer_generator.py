@@ -41,7 +41,7 @@ class GenerationProbability(nn.Module):
         self.W_inp = nn.Linear(embedding_size, 1, bias=False)
         self.bias = nn.Parameter(torch.Tensor(1))
         self.bias.data.uniform_(-self.stdev, self.stdev)
-
+    
     def forward(
         self,
         h_attention: torch.Tensor,
@@ -92,12 +92,18 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         # Overrides classifier to take larger input.
         if not self.has_features_encoder:
             self.classifier = nn.Linear(self.hidden_size, self.target_vocab_size)
-
-            self.generation_probability = GenerationProbability(  # noqa: E501
-                self.embedding_size,
+            if self.tama_decoder_strategy == "concat" or self.tama_decoder_strategy == "concat2":
+                self.generation_probability = GenerationProbability(  # noqa: E501
+                self.embedding_size * 2,
                 self.hidden_size,
-                self.source_encoder.output_size,
+                self.source_encoder.output_size
             )
+            else:
+                self.generation_probability = GenerationProbability(  # noqa: E501
+                    self.embedding_size,
+                    self.hidden_size,
+                    self.source_encoder.output_size
+                )
         else:
             self.merge_h = nn.Linear(2 * self.hidden_size, self.hidden_size)
             self.merge_c = nn.Linear(2 * self.hidden_size, self.hidden_size)
@@ -110,12 +116,20 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                 + self.features_encoder.output_size,
                 self.target_vocab_size,
             )
-            self.generation_probability = GenerationProbability(  # noqa: E501
-                self.embedding_size,
+            if self.tama_decoder_strategy == "concat" or self.tama_decoder_strategy == "concat2":
+                self.generation_probability = GenerationProbability(  # noqa: E501
+                self.embedding_size * 2,
                 self.hidden_size,
                 self.source_encoder.output_size
                 + self.features_encoder.output_size,
-            )
+                )
+            else:
+                self.generation_probability = GenerationProbability(  # noqa: E501
+                    self.embedding_size,
+                    self.hidden_size,
+                    self.source_encoder.output_size
+                    + self.features_encoder.output_size,
+                )
 
     def get_decoder(self) -> modules.lstm.LSTMAttentiveDecoder:
         return modules.lstm.LSTMAttentiveDecoder(
@@ -155,6 +169,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         source_indices: torch.Tensor,
         source_enc: torch.Tensor,
         source_mask: torch.Tensor,
+        projected_translation: Optional[torch.Tensor],
         features_enc: Optional[torch.Tensor] = None,
         features_mask: Optional[torch.Tensor] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -175,6 +190,13 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             Tuple[torch.Tensor, torch.Tensor].
         """
         embedded = self.decoder.embed(symbol)
+        if self.tama_decoder_strategy == "concat":
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
+        if self.tama_decoder_strategy == "concat2":
+            # projected_translation = self.concat2_trans_proj(projected_translation)
+            expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
+            embedded = torch.concat((embedded, expanded_translation), dim=2)
         last_h0, last_c0 = last_hiddens
         #source_enc (torch.Tensor): batch of encoded input symbols.
         context, attention_weights = self.decoder.attention(
@@ -189,6 +211,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
               # The input to decoder LSTM is the embedding concatenated to the
             # weighted, encoded, inputs.
             context = torch.cat([context, features_context], dim=2)
+        print(self.decoder.module.embedding_size)
         output, (h, c) = self.decoder.module(
             torch.cat((embedded, context), 2), (last_h0, last_c0)
         )
@@ -227,10 +250,10 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
         source_indices: torch.Tensor,
         decoder_hiddens: torch.Tensor,
         teacher_forcing: bool,
+        projected_translation: Optional[torch.Tensor] = None,
         features_enc: Optional[torch.Tensor] = None,
         features_mask: Optional[torch.Tensor] = None,
         target: Optional[torch.Tensor] = None,
-        projected_translation: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """Decodes a sequence given the encoded input.
 
@@ -258,6 +281,24 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             torch.Tensor.
         """
         batch_size = source_enc.shape[0]
+        if self.tama_decoder_strategy == "concat":
+            self.embedding_size *= 2
+        if self.tama_decoder_strategy == "concat":
+            assert self.embedding_size % 2 == 0
+            self.embeddings = self.init_embeddings(
+                self.target_vocab_size,
+                self.embedding_size // 2,
+                self.pad_idx
+            )
+        if self.tama_decoder_strategy == "concat2":
+            assert self.embedding_size % 2 == 0
+            self.embeddings = self.init_embeddings(
+                self.target_vocab_size,
+                self.embedding_size // 2,
+                self.pad_idx
+            )
+            
+        # self.concat2_trans_proj = nn.Linear(self.embedding_size, self.embedding_size// 2)
 
         if self.tama_decoder_strategy == "init_state":
            d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
@@ -270,20 +311,8 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
            )
         else:
             decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
-        # Feeds in the first decoder input, as a start tag.
-        # -> B x 1
-        if self.tama_decoder_strategy == "init_state":
-           d0 = (2 if self.decoder.bidirectional else 1) * self.decoder.layers
-           h = projected_translation.shape[-1]
-           assert self.decoder.hidden_size % h == 0
-           d2 = self.decoder.hidden_size // h
-           decoder_hiddens = (
-               projected_translation.unsqueeze(0).repeat(d0, 1, d2),
-               projected_translation.unsqueeze(0).repeat(d0, 1, d2)
-           )
-        else:
-            decoder_hiddens = self.init_hiddens(batch_size, self.decoder_layers)
-            
+
+        # -> 1 x B x decoder_dim.
         decoder_input = (
             torch.tensor(
                 [self.start_idx], device=self.device, dtype=torch.long
@@ -305,6 +334,7 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                 source_indices,
                 source_enc,
                 source_mask,
+                projected_translation,
                 features_enc=features_enc,
                 features_mask=features_mask,
             )
@@ -353,7 +383,6 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
             projected_translation = F.dropout(self.tama_projection(avg_pooled), 0.3, self.training)
         else:
             projected_translation = None
-
         encoder_output = self.source_encoder(batch, projected_translation)
         source_encoded = encoder_output.output
         if encoder_output.has_hiddens:
@@ -381,7 +410,6 @@ class PointerGeneratorLSTMEncoderDecoder(lstm.LSTMEncoderDecoder):
                     batch.source.padded,
                     last_hiddens,
                     self.teacher_forcing if self.training else False,
-                    projected_translation if not self.tama_decoder_strategy is None else None,
                     projected_translation if not self.tama_decoder_strategy is None else None,
                     target=batch.target.padded if batch.target else None,
                 )

@@ -220,9 +220,9 @@ class BaseEncoderDecoder(pl.LightningModule):
             nn.init.constant_(embedding_layer.weight[pad_idx], 0.0)
         return embedding_layer
 
-    @staticmethod
+    # @staticmethod
     def init_embeddings(
-        num_embed: int, embed_size: int, pad_idx: int
+        self,num_embed: int, embed_size: int, pad_idx: int
     ) -> nn.Embedding:
         """Method interface for initializing the embedding layer.
 
@@ -237,7 +237,7 @@ class BaseEncoderDecoder(pl.LightningModule):
         Returns:
             nn.Embedding: embedding layer.
         """
-        raise NotImplementedError
+        return self._normal_embedding_initialization(num_embed, embed_size, pad_idx)
 
     def get_decoder(self):
         raise NotImplementedError

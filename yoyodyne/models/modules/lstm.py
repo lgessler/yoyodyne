@@ -160,6 +160,7 @@ class LSTMDecoder(LSTMModule):
     def __init__(self, *args, decoder_input_size, **kwargs):
         self.tama_decoder_strategy = kwargs["tama_decoder_strategy"]
         if self.tama_decoder_strategy == "concat":
+            print("got here")
             kwargs["embedding_size"] *= 2
         self.decoder_input_size = decoder_input_size
         super().__init__(*args, **kwargs)
@@ -290,6 +291,7 @@ class LSTMAttentiveDecoder(LSTMDecoder):
         #B x seq_len x embed_dim
         embedded = self.embed(symbol)
         if self.tama_decoder_strategy == "concat":
+            print("here too")
             expanded_translation = projected_translation.unsqueeze(1).repeat(1, embedded.shape[1], 1)
             embedded = torch.concat((embedded, expanded_translation), dim=2)
         if self.tama_decoder_strategy == "concat2":
