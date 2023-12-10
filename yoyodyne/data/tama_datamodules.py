@@ -66,7 +66,7 @@ class TamaDataModule(pl.LightningDataModule):
             max_target_length=max_target_length,
         )
         self.tama_train_limit = tama_train_limit
-        self.tama_cls_token_Strategy = tama_cls_token_strategy
+        self.tama_cls_token_strategy = tama_cls_token_strategy
 
     def _make_index(self) -> indexes.Index:
         # Computes index.
