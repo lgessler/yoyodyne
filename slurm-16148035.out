@@ -1,0 +1,2 @@
+slurmstepd: error: *** JOB 16148035 ON bgpu-kann1 CANCELLED AT 2023-12-01T01:25:16 ***
+slurmstepd: error: Detected 20 oom_kill events in StepId=16148035.batch. Some of the step tasks have been OOM Killed.

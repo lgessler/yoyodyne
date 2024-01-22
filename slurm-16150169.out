@@ -1,0 +1,2 @@
+slurmstepd: error: *** JOB 16150169 ON bnode0104 CANCELLED AT 2023-12-01T14:04:34 ***
+slurmstepd: error: Detected 4 oom-kill event(s) in StepId=16150169.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.

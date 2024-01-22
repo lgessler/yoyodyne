@@ -1,0 +1,47 @@
+Traceback (most recent call last):
+  File "/projects/enri8153/software/anaconda/envs/tama/bin/yoyodyne-train", line 5, in <module>
+    from yoyodyne.train import main
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/yoyodyne/train.py", line 6, in <module>
+    import pytorch_lightning as pl
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/__init__.py", line 35, in <module>
+    from pytorch_lightning.callbacks import Callback  # noqa: E402
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/callbacks/__init__.py", line 14, in <module>
+    from pytorch_lightning.callbacks.batch_size_finder import BatchSizeFinder
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/callbacks/batch_size_finder.py", line 24, in <module>
+    from pytorch_lightning.callbacks.callback import Callback
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/callbacks/callback.py", line 25, in <module>
+    from pytorch_lightning.utilities.types import STEP_OUTPUT
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/utilities/__init__.py", line 23, in <module>
+    from pytorch_lightning.utilities.imports import (  # noqa: F401
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/pytorch_lightning/utilities/imports.py", line 28, in <module>
+    _TORCHMETRICS_GREATER_EQUAL_0_11 = compare_version("torchmetrics", operator.ge, "0.11.0")  # using new API with task
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/lightning_utilities/core/imports.py", line 73, in compare_version
+    pkg = importlib.import_module(package)
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/torchmetrics/__init__.py", line 14, in <module>
+    from torchmetrics import functional  # noqa: E402
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/torchmetrics/functional/__init__.py", line 120, in <module>
+    from torchmetrics.functional.text._deprecated import _bleu_score as bleu_score
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/torchmetrics/functional/text/__init__.py", line 50, in <module>
+    from torchmetrics.functional.text.bert import bert_score  # noqa: F401
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/torchmetrics/functional/text/bert.py", line 23, in <module>
+    from torchmetrics.functional.text.helper_embedding_metric import (
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/torchmetrics/functional/text/helper_embedding_metric.py", line 27, in <module>
+    from transformers import AutoModelForMaskedLM, AutoTokenizer, PreTrainedModel, PreTrainedTokenizerBase
+  File "<frozen importlib._bootstrap>", line 1075, in _handle_fromlist
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 1174, in __getattr__
+    module = self._get_module(self._class_to_module[name])
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/transformers/utils/import_utils.py", line 1184, in _get_module
+    return importlib.import_module("." + module_name, self.__name__)
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/importlib/__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "/projects/enri8153/software/anaconda/envs/tama/lib/python3.10/site-packages/transformers/modeling_utils.py", line 39, in <module>
+    from .generation import GenerationConfig, GenerationMixin
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 879, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 975, in get_code
+  File "<frozen importlib._bootstrap_external>", line 1074, in get_data
+KeyboardInterrupt
