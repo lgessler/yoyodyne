@@ -43,6 +43,7 @@ class TamaDataModule(pl.LightningDataModule):
         # Indexing.
         index: Optional[indexes.Index] = None,
         tama_train_limit: int = None,
+        tama_train_seed: int = 0,
         tama_cls_token_strategy: str = "none",
     ):
         super().__init__()
@@ -66,6 +67,7 @@ class TamaDataModule(pl.LightningDataModule):
             max_target_length=max_target_length,
         )
         self.tama_train_limit = tama_train_limit
+        self.tama_train_seed = tama_train_seed
         self.tama_cls_token_Strategy = tama_cls_token_strategy
 
     def _make_index(self) -> indexes.Index:
@@ -136,11 +138,13 @@ class TamaDataModule(pl.LightningDataModule):
                 self.index.source_vocab_size + self.index.features_vocab_size
             )
 
-    def _dataset(self, path: str, limit: int = None) -> tama_datasets.TamaDataset:
+    def _dataset(self, path: str, limit: int = None, seed: int = 0) -> tama_datasets.TamaDataset:
         insts = list(self.parser.samples(path))
         if limit is not None:
             print(f"NOTE: limiting train instances to first {limit}")
-            insts = insts[:limit]
+            start = seed * limit
+            end = start + limit
+            insts = insts[start:end]
         return tama_datasets.TamaDataset(
             insts,
             self.index,
@@ -152,7 +156,7 @@ class TamaDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> data.DataLoader:
         assert self.train is not None, "no train path"
         return data.DataLoader(
-            self._dataset(self.train, self.tama_train_limit),
+            self._dataset(self.train, self.tama_train_limit, self.tama_train_seed),
             collate_fn=self.collator,
             batch_size=self.batch_size,
             shuffle=True,

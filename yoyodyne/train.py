@@ -122,6 +122,7 @@ def get_datamodule_from_argparse_args(
         max_source_length=args.max_source_length,
         max_target_length=args.max_target_length,
         tama_train_limit=args.tama_train_limit,
+        tama_train_seed = args.tama_train_seed
     )
     if not datamodule.has_target:
         raise Error("No target column specified")
@@ -293,6 +294,12 @@ def add_argparse_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         default=None,
         help="Number of training instances to use"
+    )
+    parser.add_argument(
+        "--tama_train_seed",
+        type=int,
+        default=0,
+        help="train split seed (WIP, only works for 100 training sample)"
     )
     # Data arguments.
     data.add_argparse_args(parser)
